@@ -1,7 +1,7 @@
 export default async function handler(req, res) {
   const VERIFY_TOKEN = "upbeats123";
 
-  // ✅ Verification (GET request from Meta)
+  // ✅ Webhook verification (GET)
   if (req.method === "GET") {
     const mode = req.query["hub.mode"];
     const token = req.query["hub.verify_token"];
@@ -14,13 +14,16 @@ export default async function handler(req, res) {
     }
   }
 
-  // ✅ Handle incoming messages
+  // ✅ Handle incoming WhatsApp messages (POST)
   if (req.method === "POST") {
     try {
-      const body = req.body;
+      const body =
+        typeof req.body === "string"
+          ? JSON.parse(req.body)
+          : req.body;
 
       const message =
-        body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+        body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
 
       if (message) {
         const from = message.from;
@@ -30,8 +33,7 @@ export default async function handler(req, res) {
           {
             method: "POST",
             headers: {
-              Authorization:
-                "Bearer EAALnCZCkmhCsBRMCtym2s6RdlUu8yrEHkb7WrsZAEQtyjMdLsfAmNa2j1KxbsuwSWBZCWvhEUs0yjlZBLtprg9H8TrWscL9LUs2GWVYjsHRScWjd15pw6r8L38zcZApGFmRHrZAdYtxjnnZA0QYvbTRLThXAZCucMCpmWZA8DsqREr0LZBQEVojZAfvWTc2g55KOZBpZCc3OnHG0th2IIUOxTnS7SDRQYa2ktU4aN4wuMatQz4DarDPRnEJrODMKgpJaM5MIYB1aQeS7CIt4mW54vVRBNNg2I",
+              Authorization: "Bearer EAALnCZCkmhCsBRE4z9AWZBe5INpOyVlrAojj2pFZCNa7KK55UI4zotVCdgOQxgbiHPPGTv5h0Mvqo7PZCwqaJ9QbW1x9gW5LKqUrNPUZCNpZCkFmWu32qAm6tDNkRmPWd1t1ONbO8QEG471iN8ivKQhZBb6CG1kUEvmXtzbkG5bCJZC3eQlYpqas17vAjo0SLba4FZBluwtzgOQvUS9V7jqYCuhEq27hMBZCSZBQfZAS5XvkYIUCY7dwbPM22wwtXACnz1ZCRXECN7Wi3JnauFMdpTn9fih6ZCOwZDZD",
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
@@ -45,8 +47,8 @@ export default async function handler(req, res) {
 
       return res.sendStatus(200);
     } catch (error) {
-      console.error(error);
-      return res.sendStatus(500);
+      console.error("ERROR:", error);
+      return res.sendStatus(200);
     }
   }
 
