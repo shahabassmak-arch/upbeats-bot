@@ -43,23 +43,21 @@ export default async function handler(req, res) {
       // ⚠️ TEMP: disable reply to avoid crash
       // (we enable after webhook works)
 
-      /*
       await fetch(
-        "https://graph.facebook.com/v18.0/1129573116896941/messages",
-        {
-          method: "POST",
-          headers: {
-            Authorization: "Bearer YOUR_ACCESS_TOKEN",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            messaging_product: "whatsapp",
-            to: from,
-            text: { body: "Hello from Upbeats Bot 😊" },
-          }),
-        }
-      );
-      */
+  "https://graph.facebook.com/v18.0/1129573116896941/messages",
+  {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer EAALnCZCkmhCsBRE4z9AWZBe5INpOyVlrAojj2pFZCNa7KK55UI4zotVCdgOQxgbiHPPGTv5h0Mvqo7PZCwqaJ9QbW1x9gW5LKqUrNPUZCNpZCkFmWu32qAm6tDNkRmPWd1t1ONbO8QEG471iN8ivKQhZBb6CG1kUEvmXtzbkG5bCJZC3eQlYpqas17vAjo0SLba4FZBluwtzgOQvUS9V7jqYCuhEq27hMBZCSZBQfZAS5XvkYIUCY7dwbPM22wwtXACnz1ZCRXECN7Wi3JnauFMdpTn9fih6ZCOwZDZD",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      to: from,
+      text: { body: "Hello from Upbeats Bot 😊" },
+    }),
+  }
+);
 
       return res.status(200).send("EVENT_RECEIVED");
     }
