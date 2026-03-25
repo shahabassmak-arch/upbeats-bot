@@ -17,54 +17,59 @@ export default async function handler(req, res) {
 
     // ✅ Handle POST (WhatsApp messages)
     if (req.method === "POST") {
-      let body = {};
+  try {
+    const body =
+      typeof req.body === "string"
+        ? JSON.parse(req.body)
+        : req.body || {};
 
-      try {
-        body =
-          typeof req.body === "string"
-            ? JSON.parse(req.body)
-            : req.body || {};
-      } catch (e) {
-        console.log("Body parse error");
-      }
+    const message =
+      body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
 
-      const message =
-        body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
-
-      console.log("Incoming:", message);
-
-      // ⚠️ SAFE: do not call API if no message
-      if (!message || !message.from) {
-        return res.status(200).send("No message");
-      }
-
-      const from = message.from;
-
-      // ⚠️ TEMP: disable reply to avoid crash
-      // (we enable after webhook works)
-
-      await fetch(
-  "https://graph.facebook.com/v18.0/1129573116896941/messages",
-  {
-    method: "POST",
-    headers: {
-      Authorization: "Bearer EAALnCZCkmhCsBRFIr0wtIHz7lZBbUpb6ZBN9REq1iyjGDTZAnZCNZC2jzyfgXoJ0UjgMLyiI1b2GFjeyGZCQWvB26zmbMBMJxKFNQnZApSmN7Vc3NJ6nAepZAm8oZAJBXF5lqGgxTAUevnvWr4Na388St6qfqRoB4QzSAydZBXK6EeIWzjwZB5i02iuHr3qmgjZAuNbEZB5lSL5vZCvyn6UghqLzEmsKe9s67WwBHst5vuGzQYBOhT4dndv9QJqVWwqFphZAS3gTT2sqwddjs6sI9ultJNnFehMVRwZDZD",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      messaging_product: "whatsapp",
-      to: from,
-      text: { body: "Hello from Upbeats Bot 😊" },
-    }),
-  }
-);
-
-      return res.status(200).send("EVENT_RECEIVED");
+    if (!message || !message.from) {
+      return res.status(200).send("No message");
     }
 
-    return res.status(405).send("Method Not Allowed");
+    const from = message.from;
+    const userMessage = message.text?.body || "Hi";
+
+    // 🔥 Call your LMS AI
+    const aiResponse = await fetch("https://upbeatsacademy.online/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message: userMessage,
+      }),
+    });
+
+    const aiData = await aiResponse.json();
+
+    // ⚠️ Adjust if needed
+    const replyText =
+      aiData.reply || aiData.message || "Sorry, I couldn't understand.";
+
+    // 🔥 Send reply to WhatsApp
+    await fetch(
+      "https://graph.facebook.com/v18.0/1129573116896941/messages",
+      {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer EAALnCZCkmhCsBRFIr0wtIHz7lZBbUpb6ZBN9REq1iyjGDTZAnZCNZC2jzyfgXoJ0UjgMLyiI1b2GFjeyGZCQWvB26zmbMBMJxKFNQnZApSmN7Vc3NJ6nAepZAm8oZAJBXF5lqGgxTAUevnvWr4Na388St6qfqRoB4QzSAydZBXK6EeIWzjwZB5i02iuHr3qmgjZAuNbEZB5lSL5vZCvyn6UghqLzEmsKe9s67WwBHst5vuGzQYBOhT4dndv9QJqVWwqFphZAS3gTT2sqwddjs6sI9ultJNnFehMVRwZDZD",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          to: from,
+          text: { body: replyText },
+        }),
+      }
+    );
+
+    return res.status(200).send("OK");
   } catch (error) {
-    console.error("CRASH ERROR:", error);
+    console.error("ERROR:", error);
     return res.status(200).send("Error handled");
   }
 }
