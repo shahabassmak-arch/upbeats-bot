@@ -24,15 +24,22 @@ export default async function handler(req, res) {
     try {
       const body = req.body;
 
-      const message =
-        body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.text?.body;
+      const value = body.entry?.[0]?.changes?.[0]?.value;
 
-      const from =
-        body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.from;
+// Ignore non-message events (status updates etc.)
+if (!value || !value.messages) {
+  return res.sendStatus(200);
+}
 
-      if (!message || !from) {
-        return res.sendStatus(200);
-      }
+const msg = value.messages[0];
+
+// Ignore non-text messages
+if (!msg.text || !msg.text.body) {
+  return res.sendStatus(200);
+}
+
+const message = msg.text.body;
+const from = msg.from;
 
       console.log("User:", from);
       console.log("Message:", message);
