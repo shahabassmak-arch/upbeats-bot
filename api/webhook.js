@@ -33,20 +33,27 @@ export default async function handler(req, res) {
     const from = message.from;
     const userMessage = message.text?.body || "Hi";
 
-// 🔥 Call Lovable AI API
-const aiResponse = await fetch("https://upbeatsacademy.online/chat", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    Authorization: "Bearer Shahabas@123" // <-- Your Lovable key
-  },
-  body: JSON.stringify({ message: userMessage })
-});
+try {
+  // 🔥 Call Lovable AI API
+  const aiResponse = await fetch("https://upbeatsacademy.online/chat", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer Shahabas@123" // <-- Your Lovable key
+    },
+    body: JSON.stringify({ message: userMessage })
+  });
 
-const aiData = await aiResponse.json();
+  const aiData = await aiResponse.json();
 
-// Get AI reply
-const replyText = aiData.reply || aiData.message || aiData.response || "Sorry, I couldn't understand.";
+  console.log("AI response:", aiData); // <-- optional for debugging
+
+  const replyText = aiData.reply || aiData.message || aiData.response || "Sorry, I couldn't understand.";
+
+} catch (err) {
+  console.error("AI call failed:", err);
+  const replyText = "Sorry, AI is not responding.";
+}
 
     // 🔥 Send reply to WhatsApp
     await fetch(
