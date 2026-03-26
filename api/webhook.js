@@ -26,23 +26,30 @@ export default async function handler(req, res) {
 
       const value = body.entry?.[0]?.changes?.[0]?.value;
 
-// Ignore non-message events (status updates etc.)
 if (!value || !value.messages) {
   return res.sendStatus(200);
 }
 
 const msg = value.messages[0];
 
-// Ignore non-text messages
+// ❗ Ignore duplicate messages
+if (msg.id === lastMessageId) {
+  return res.sendStatus(200);
+}
+lastMessageId = msg.id;
+
+// ❗ Ignore non-text messages
 if (!msg.text || !msg.text.body) {
+  return res.sendStatus(200);
+}
+
+// ❗ Ignore your own bot messages
+if (msg.from === "1129573116896941") {
   return res.sendStatus(200);
 }
 
 const message = msg.text.body;
 const from = msg.from;
-
-      console.log("User:", from);
-      console.log("Message:", message);
 
       // ==============================
       // 🔥 3. CALL YOUR AI API
