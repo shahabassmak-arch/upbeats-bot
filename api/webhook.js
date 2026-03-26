@@ -1,7 +1,9 @@
+let lastMessageId = null;
+
 export default async function handler(req, res) {
 
   // ==============================
-  // ✅ 1. WEBHOOK VERIFICATION (GET)
+  // ✅ 1. WEBHOOK VERIFICATION
   // ==============================
   if (req.method === "GET") {
     const VERIFY_TOKEN = "upbeats123";
@@ -18,7 +20,7 @@ export default async function handler(req, res) {
   }
 
   // ==============================
-  // ✅ 2. HANDLE INCOMING MESSAGE (POST)
+  // ✅ 2. HANDLE INCOMING MESSAGE
   // ==============================
   if (req.method === "POST") {
     try {
@@ -26,30 +28,29 @@ export default async function handler(req, res) {
 
       const value = body.entry?.[0]?.changes?.[0]?.value;
 
-if (!value || !value.messages) {
-  return res.sendStatus(200);
-}
+      // Ignore non-message events
+      if (!value || !value.messages) {
+        return res.sendStatus(200);
+      }
 
-const msg = value.messages[0];
+      const msg = value.messages[0];
 
-// ❗ Ignore duplicate messages
-if (msg.id === lastMessageId) {
-  return res.sendStatus(200);
-}
-lastMessageId = msg.id;
+      // ✅ Prevent duplicate messages
+      if (msg.id === lastMessageId) {
+        return res.sendStatus(200);
+      }
+      lastMessageId = msg.id;
 
-// ❗ Ignore non-text messages
-if (!msg.text || !msg.text.body) {
-  return res.sendStatus(200);
-}
+      // ✅ Only allow text messages
+      if (!msg.text || !msg.text.body) {
+        return res.sendStatus(200);
+      }
 
-// ❗ Ignore your own bot messages
-if (msg.from === "1129573116896941") {
-  return res.sendStatus(200);
-}
+      const message = msg.text.body;
+      const from = msg.from;
 
-const message = msg.text.body;
-const from = msg.from;
+      console.log("User:", from);
+      console.log("Message:", message);
 
       // ==============================
       // 🔥 3. CALL YOUR AI API
@@ -61,9 +62,7 @@ const from = msg.from;
           headers: {
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({
-            message: message
-          })
+          body: JSON.stringify({ message })
         }
       );
 
@@ -75,11 +74,10 @@ const from = msg.from;
       // ==============================
       // 📤 4. SEND REPLY TO WHATSAPP
       // ==============================
-
       const PHONE_NUMBER_ID = "1129573116896941";
 
-      // 🔴 REPLACE "Shahabas" WITH YOUR REAL ACCESS TOKEN
-      const ACCESS_TOKEN = "EAALnCZCkmhCsBRMYiZB0eDzDW8OvaQywavHo1licD9ZASkdAYYPZBnywPwm2dd0pgMFEaskU7C7G0rsYSUJfZBv1rLBelScD3vPukxf146uZAWiewK3OZAIiVxwdQHH2YzNxga96HvIZBJDn9iKHDzJ8QDp0oompf0gQP7yuOcQAdt6iq0pID7nf74jh9iff1TCzRJeb9syH8e4ep1joGN1dU4FZBdTfLWfXCaGIF4NmYdGawKh8VEb4ELmZAziZAHiqjUidmZAeWeObZCsuXxPKd0QKqLJsM";
+      // 🔴 REPLACE THIS WITH YOUR REAL TOKEN
+      const ACCESS_TOKEN = "EAALnCZCkmhCsBRPHODvs4AS4fno8NO82weU88cH461cm8ZBhW0zw0IvFhUPvDAVzZBWh70LUZADhQW6WeYVKkvHNMe0kMAACwAQ8A0wDj1XZAMHqZCp0VLvuEbrdLYYKlIdhWFvRS73ReXZAph14y0bhWZANzyZCxxUdfoDxma5Odl9pkvZADydvSGyXAtMbZB8jW0Ivs1Wy3qGK7aBZA6qw65CrnqZAZB0uZCTDWA6QpzjpxF6jOrUbw7QxccqtRIdxnYrLjc60lvTRjP3qxTiLSeidP7e4ORi";
 
       await fetch(
         `https://graph.facebook.com/v18.0/${PHONE_NUMBER_ID}/messages`,
@@ -92,9 +90,7 @@ const from = msg.from;
           body: JSON.stringify({
             messaging_product: "whatsapp",
             to: from,
-            text: {
-              body: reply
-            }
+            text: { body: reply }
           })
         }
       );
