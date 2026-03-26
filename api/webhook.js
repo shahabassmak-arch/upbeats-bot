@@ -1,70 +1,97 @@
 export default async function handler(req, res) {
-  const VERIFY_TOKEN = "upbeats123";
 
-  try {
-    // ✅ Verification (GET)
-    if (req.method === "GET") {
-      const mode = req.query["hub.mode"];
-      const token = req.query["hub.verify_token"];
-      const challenge = req.query["hub.challenge"];
+  // ==============================
+  // ✅ 1. WEBHOOK VERIFICATION (GET)
+  // ==============================
+  if (req.method === "GET") {
+    const VERIFY_TOKEN = "upbeats123";
 
-      if (mode === "subscribe" && token === VERIFY_TOKEN) {
-        return res.status(200).send(challenge);
-      } else {
-        return res.status(403).send("Forbidden");
-      }
+    const mode = req.query["hub.mode"];
+    const token = req.query["hub.verify_token"];
+    const challenge = req.query["hub.challenge"];
+
+    if (mode === "subscribe" && token === VERIFY_TOKEN) {
+      return res.status(200).send(challenge);
+    } else {
+      return res.sendStatus(403);
     }
+  }
 
-    // ✅ Handle POST (WhatsApp messages)
-    if (req.method === "POST") {
-      let body = {};
-
-      try {
-        body =
-          typeof req.body === "string"
-            ? JSON.parse(req.body)
-            : req.body || {};
-      } catch (e) {
-        console.log("Body parse error");
-      }
+  // ==============================
+  // ✅ 2. HANDLE INCOMING MESSAGE (POST)
+  // ==============================
+  if (req.method === "POST") {
+    try {
+      const body = req.body;
 
       const message =
-        body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+        body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.text?.body;
 
-      console.log("Incoming:", message);
+      const from =
+        body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.from;
 
-      // ⚠️ SAFE: do not call API if no message
-      if (!message || !message.from) {
-        return res.status(200).send("No message");
+      if (!message || !from) {
+        return res.sendStatus(200);
       }
 
-      const from = message.from;
+      console.log("User:", from);
+      console.log("Message:", message);
 
-      // ⚠️ TEMP: disable reply to avoid crash
-      // (we enable after webhook works)
+      // ==============================
+      // 🔥 3. CALL YOUR AI API
+      // ==============================
+      const aiResponse = await fetch(
+        "https://hscobkuzqqmqchyaqcsf.supabase.co/functions/v1/ai-chat",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            message: message
+          })
+        }
+      );
 
-await fetch(
-  "https://graph.facebook.com/v18.0/1129573116896941/messages",
-  {
-    method: "POST",
-    headers: {
-      Authorization: "Bearer EAALnCZCkmhCsBRAujf7tt2QZBOXKL6nIwvhKv5qILZC1ssfWWi5xZCFEU1WZBwyyaOdyj6pPYoCZADzZCyRZBOz1ZBuuICEZBEARqYubYIE41jZBvrgnydI7gGoWbVpBrG7ZAvoQtyNGiMUGZBwCJ1ofHEKUB2b6ZBP4PJb81QT0ZCbPo87n4tgHfYF8Ys981IYM2eLWbX5nn7b2ZBqY5cK4u7ZAayZCL3Ybo6KHtwQL1DZBKdq6VsCiozzTdlrYN0ORzm5ZAtT0jZC7DLs96Uct0xlsNfZBfCFgV19WKLfAZDZD",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      messaging_product: "whatsapp",
-      to: from,
-      text: { body: "Hello from Upbeats Bot 😊" },
-    }),
-  }
-);
+      const aiData = await aiResponse.json();
+      const reply = aiData.reply || "Sorry! Try again 😓";
 
-      return res.status(200).send("EVENT_RECEIVED");
+      console.log("AI Reply:", reply);
+
+      // ==============================
+      // 📤 4. SEND REPLY TO WHATSAPP
+      // ==============================
+
+      const PHONE_NUMBER_ID = "1129573116896941";
+
+      // 🔴 REPLACE "Shahabas" WITH YOUR REAL ACCESS TOKEN
+      const ACCESS_TOKEN = "EAALnCZCkmhCsBRMYiZB0eDzDW8OvaQywavHo1licD9ZASkdAYYPZBnywPwm2dd0pgMFEaskU7C7G0rsYSUJfZBv1rLBelScD3vPukxf146uZAWiewK3OZAIiVxwdQHH2YzNxga96HvIZBJDn9iKHDzJ8QDp0oompf0gQP7yuOcQAdt6iq0pID7nf74jh9iff1TCzRJeb9syH8e4ep1joGN1dU4FZBdTfLWfXCaGIF4NmYdGawKh8VEb4ELmZAziZAHiqjUidmZAeWeObZCsuXxPKd0QKqLJsM";
+
+      await fetch(
+        `https://graph.facebook.com/v18.0/${PHONE_NUMBER_ID}/messages`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${ACCESS_TOKEN}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            messaging_product: "whatsapp",
+            to: from,
+            text: {
+              body: reply
+            }
+          })
+        }
+      );
+
+      return res.sendStatus(200);
+
+    } catch (error) {
+      console.error("Error:", error);
+      return res.sendStatus(200);
     }
-
-    return res.status(405).send("Method Not Allowed");
-  } catch (error) {
-    console.error("CRASH ERROR:", error);
-    return res.status(200).send("Error handled");
   }
+
+  return res.sendStatus(405);
 }
