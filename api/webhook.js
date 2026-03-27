@@ -1,4 +1,3 @@
-// ✅ Store processed message IDs (temporary memory)
 const processedMessages = new Set();
 
 export default async function handler(req, res) {
@@ -21,89 +20,89 @@ export default async function handler(req, res) {
   }
 
   // ==============================
-  // ✅ 2. HANDLE INCOMING MESSAGE
+  // ✅ 2. HANDLE WEBHOOK EVENTS
   // ==============================
   if (req.method === "POST") {
     try {
       const body = req.body;
-      const value = body.entry?.[0]?.changes?.[0]?.value;
 
-      // 🚫 Ignore invalid
-      if (!value) return res.sendStatus(200);
+      // 🔥 LOOP THROUGH ALL ENTRIES (IMPORTANT)
+      for (const entry of body.entry || []) {
+        for (const change of entry.changes || []) {
 
-      // 🚫 Ignore status updates (VERY IMPORTANT)
-      if (value.statuses) return res.sendStatus(200);
+          const value = change.value;
 
-      const msg = value.messages?.[0];
-      if (!msg) return res.sendStatus(200);
+          // 🚫 Ignore status updates
+          if (value?.statuses) continue;
 
-      // 🚫 Ignore non-text
-      if (msg.type !== "text") return res.sendStatus(200);
+          const messages = value?.messages;
+          if (!messages) continue;
 
-      // 🚫 Ignore bot's own messages (IMPORTANT 🔥)
-      const myNumber = value.metadata?.display_phone_number;
-      if (msg.from === myNumber) {
-        return res.sendStatus(200);
-      }
+          for (const msg of messages) {
 
-      // 🚫 Prevent duplicate processing
-      if (processedMessages.has(msg.id)) {
-        return res.sendStatus(200);
-      }
-      processedMessages.add(msg.id);
+            // 🚫 Only text messages
+            if (msg.type !== "text") continue;
 
-      // Optional cleanup (avoid memory leak)
-      setTimeout(() => processedMessages.delete(msg.id), 60000);
+            // 🚫 Ignore duplicates
+            if (processedMessages.has(msg.id)) continue;
+            processedMessages.add(msg.id);
 
-      const message = msg.text?.body;
-      const from = msg.from;
+            // Cleanup memory
+            setTimeout(() => processedMessages.delete(msg.id), 60000);
 
-      if (!message || !from) return res.sendStatus(200);
+            const message = msg.text?.body;
+            const from = msg.from;
 
-      console.log("User:", from);
-      console.log("Message:", message);
+            if (!message || !from) continue;
 
-      // ==============================
-      // 🔥 CALL AI API
-      // ==============================
-      const aiResponse = await fetch(
-        "https://hscobkuzqqmqchyaqcsf.supabase.co/functions/v1/ai-chat",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ message })
+            console.log("User:", from);
+            console.log("Message:", message);
+
+            // ==============================
+            // 🔥 CALL AI API
+            // ==============================
+            const aiResponse = await fetch(
+              "https://hscobkuzqqmqchyaqcsf.supabase.co/functions/v1/ai-chat",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ message })
+              }
+            );
+
+            const aiData = await aiResponse.json();
+            const reply = aiData.reply || "Sorry! Try again 😓";
+
+            console.log("AI Reply:", reply);
+
+            // ==============================
+            // 📤 SEND REPLY
+            // ==============================
+            const PHONE_NUMBER_ID = "1033957863139428";
+
+            const ACCESS_TOKEN = "EAALnCZCkmhCsBRDaOoqS7bkVZBBFr23z7amSJLmSMUzl7qn488SqmZB5SCWO9NcZBp7jLL36QEK4ExruKQl7XNpszZAOmEElmHZBZCaZBSQ7SDZAlh4poLjYOHc0hZCcs3ZA14dqAjZCNB0wFLoYo6Y04Qbo9YpVG9YCSgGymWTGH91JPtAdpEBcx4LBt8Aqxnu55rJRtQZDZD";
+
+            await fetch(
+              `https://graph.facebook.com/v18.0/${PHONE_NUMBER_ID}/messages`,
+              {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${ACCESS_TOKEN}`,
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  messaging_product: "whatsapp",
+                  to: from,
+                  text: { body: reply }
+                })
+              }
+            );
+
+          }
         }
-      );
-
-      const aiData = await aiResponse.json();
-      const reply = aiData.reply || "Sorry! Try again 😓";
-
-      console.log("AI Reply:", reply);
-
-      // ==============================
-      // 📤 SEND MESSAGE
-      // ==============================
-      const PHONE_NUMBER_ID = "1033957863139428";
-
-      const ACCESS_TOKEN = "EAALnCZCkmhCsBRDaOoqS7bkVZBBFr23z7amSJLmSMUzl7qn488SqmZB5SCWO9NcZBp7jLL36QEK4ExruKQl7XNpszZAOmEElmHZBZCaZBSQ7SDZAlh4poLjYOHc0hZCcs3ZA14dqAjZCNB0wFLoYo6Y04Qbo9YpVG9YCSgGymWTGH91JPtAdpEBcx4LBt8Aqxnu55rJRtQZDZD";
-
-      await fetch(
-        `https://graph.facebook.com/v18.0/${PHONE_NUMBER_ID}/messages`,
-        {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${ACCESS_TOKEN}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            messaging_product: "whatsapp",
-            to: from,
-            text: { body: reply }
-          })
-        }
-      );
+      }
 
       return res.sendStatus(200);
 
