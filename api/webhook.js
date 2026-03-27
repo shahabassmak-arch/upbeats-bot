@@ -1,7 +1,7 @@
 export default async function handler(req, res) {
 
   // ==============================
-  // ✅ VERIFY
+  // ✅ VERIFY WEBHOOK
   // ==============================
   if (req.method === "GET") {
     const VERIFY_TOKEN = "upbeats123";
@@ -24,18 +24,32 @@ export default async function handler(req, res) {
 
       const value = body.entry?.[0]?.changes?.[0]?.value;
 
-      // 🚫 Ignore invalid
+      // Ignore invalid
       if (!value) return res.sendStatus(200);
 
-      // 🚫 Ignore status updates
+      // Ignore status updates
       if (value.statuses) return res.sendStatus(200);
 
       const msg = value.messages?.[0];
 
-      // 🚫 No message
+      // No message
       if (!msg) return res.sendStatus(200);
 
-      // 🚫 Only text
+      // ==============================
+      // ✅ STOP DUPLICATES
+      // ==============================
+      const msgId = msg.id;
+
+      global.processedMessages = global.processedMessages || new Set();
+
+      if (global.processedMessages.has(msgId)) {
+        return res.sendStatus(200);
+      }
+      global.processedMessages.add(msgId);
+
+      // ==============================
+      // ✅ ONLY TEXT
+      // ==============================
       if (msg.type !== "text") return res.sendStatus(200);
 
       const message = msg.text?.body;
@@ -43,11 +57,18 @@ export default async function handler(req, res) {
 
       if (!message || !from) return res.sendStatus(200);
 
+      // ==============================
+      // ⚠️ IMPORTANT: IGNORE SELF LOOP
+      // ==============================
+      if (from === "1033957863139428") {
+        return res.sendStatus(200);
+      }
+
       console.log("User:", from);
       console.log("Message:", message);
 
       // ==============================
-      // 🔥 AI CALL (FAST)
+      // 🔥 AI CALL
       // ==============================
       const aiRes = await fetch(
         "https://hscobkuzqqmqchyaqcsf.supabase.co/functions/v1/ai-chat",
@@ -82,7 +103,6 @@ export default async function handler(req, res) {
         }
       );
 
-      // ✅ IMPORTANT: respond after everything
       return res.sendStatus(200);
 
     } catch (err) {
