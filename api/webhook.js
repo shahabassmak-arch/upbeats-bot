@@ -76,7 +76,7 @@ export default async function handler(req, res) {
       // ==============================
       const PHONE_NUMBER_ID = "1033957863139428";
       // 🔴 REPLACE THIS WITH YOUR REAL TOKEN
-      const ACCESS_TOKEN = "EAALnCZCkmhCsBRPtRHSQENvkOvKTHEQtle1JmKI9RgrKDZBgAEHwGM8XsbaUCx98veu9pCwaUjewZBAx9LpPniCKMg5yIZBk5BlL4PMxwdQuZBtZBqZCEt2wRIs2i67j15PsTAp1hrS9W4d4K0Q8HrgfrrTZA1IYZBcsbG8AQsYdZBzJHlunda6OZAVPZC4AjgGBB1PmXAuZB74pIB1Ts9QK6IK0YkojZCoG8ybuKrTB2FC8fWrIre5AeCMStAQCiIiFdZBP5c6xXgrgQxIXu3UO1jZCAroO";
+      const ACCESS_TOKEN = "EAALnCZCkmhCsBRDaOoqS7bkVZBBFr23z7amSJLmSMUzl7qn488SqmZB5SCWO9NcZBp7jLL36QEK4ExruKQl7XNpszZAOmEElmHZBZCaZBSQ7SDZAlh4poLjYOHc0hZCcs3ZA14dqAjZCNB0wFLoYo6Y04Qbo9YpVG9YCSgGymWTGH91JPtAdpEBcx4LBt8Aqxnu55rJRtQZDZD";
 
       await fetch(
         `https://graph.facebook.com/v18.0/${PHONE_NUMBER_ID}/messages`,
