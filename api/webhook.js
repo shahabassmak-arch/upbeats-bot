@@ -1,7 +1,7 @@
 export default async function handler(req, res) {
 
   // ==============================
-  // ✅ VERIFY
+  // ✅ VERIFY WEBHOOK
   // ==============================
   if (req.method === "GET") {
     const VERIFY_TOKEN = "upbeats123";
@@ -20,42 +20,53 @@ export default async function handler(req, res) {
   // ==============================
   if (req.method === "POST") {
 
-    // 🚨 Respond immediately (STOP RETRIES)
-    res.sendStatus(200);
+    const body = req.body;
 
     try {
-      const body = req.body;
+      const value = body.entry?.[0]?.changes?.[0]?.value;
 
-      const value =
-        body.entry?.[0]?.changes?.[0]?.value;
+      // 🚫 Ignore if no value
+      if (!value) {
+        return res.sendStatus(200);
+      }
 
-      // 🚫 Ignore status updates
-      if (!value || value.statuses) return;
+      // 🚫 Ignore status updates (important)
+      if (value.statuses) {
+        return res.sendStatus(200);
+      }
 
       const msg = value.messages?.[0];
 
       // 🚫 No message
-      if (!msg) return;
+      if (!msg) {
+        return res.sendStatus(200);
+      }
 
-      // 🚫 Only text
-      if (msg.type !== "text") return;
+      // 🚫 Only text messages
+      if (msg.type !== "text") {
+        return res.sendStatus(200);
+      }
 
       const message = msg.text?.body;
       const from = msg.from;
 
-      if (!message || !from) return;
+      if (!message || !from) {
+        return res.sendStatus(200);
+      }
 
       console.log("User:", from);
       console.log("Message:", message);
 
       // ==============================
-      // 🔥 AI CALL
+      // 🔥 CALL AI
       // ==============================
       const aiRes = await fetch(
         "https://hscobkuzqqmqchyaqcsf.supabase.co/functions/v1/ai-chat",
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json"
+          },
           body: JSON.stringify({ message })
         }
       );
@@ -82,14 +93,13 @@ export default async function handler(req, res) {
         }
       );
 
-      // 🛑 STOP AFTER ONE RESPONSE
-      return;
+      return res.sendStatus(200);
 
     } catch (err) {
       console.error(err);
-      return;
+      return res.sendStatus(200);
     }
   }
 
   return res.sendStatus(405);
-}
+  }
