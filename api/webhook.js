@@ -19,66 +19,76 @@ export default async function handler(req, res) {
   // ✅ HANDLE MESSAGE
   // ==============================
   if (req.method === "POST") {
+    try {
+      const body = req.body;
 
-    // 🚨 VERY IMPORTANT → respond instantly
-    res.status(200).end();
+      const value = body.entry?.[0]?.changes?.[0]?.value;
 
-    // 👉 run async (no blocking)
-    setTimeout(async () => {
-      try {
-        const body = req.body;
-        const value = body.entry?.[0]?.changes?.[0]?.value;
+      // 🚫 Ignore invalid
+      if (!value) return res.sendStatus(200);
 
-        if (!value || value.statuses) return;
+      // 🚫 Ignore status updates
+      if (value.statuses) return res.sendStatus(200);
 
-        const msg = value.messages?.[0];
-        if (!msg || msg.type !== "text") return;
+      const msg = value.messages?.[0];
 
-        const message = msg.text?.body;
-        const from = msg.from;
+      // 🚫 No message
+      if (!msg) return res.sendStatus(200);
 
-        if (!message || !from) return;
+      // 🚫 Only text
+      if (msg.type !== "text") return res.sendStatus(200);
 
-        console.log("User:", from, message);
+      const message = msg.text?.body;
+      const from = msg.from;
 
-        // 🔥 AI CALL
-        const aiRes = await fetch(
-          "https://hscobkuzqqmqchyaqcsf.supabase.co/functions/v1/ai-chat",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ message })
-          }
-        );
+      if (!message || !from) return res.sendStatus(200);
 
-        const data = await aiRes.json();
-        const reply = data.reply || "Try again 😓";
+      console.log("User:", from);
+      console.log("Message:", message);
 
-        // 📤 SEND REPLY
-        await fetch(
-          "https://graph.facebook.com/v18.0/1033957863139428/messages",
-          {
-            method: "POST",
-            headers: {
-              "Authorization": "Bearer EAALnCZCkmhCsBRDaOoqS7bkVZBBFr23z7amSJLmSMUzl7qn488SqmZB5SCWO9NcZBp7jLL36QEK4ExruKQl7XNpszZAOmEElmHZBZCaZBSQ7SDZAlh4poLjYOHc0hZCcs3ZA14dqAjZCNB0wFLoYo6Y04Qbo9YpVG9YCSgGymWTGH91JPtAdpEBcx4LBt8Aqxnu55rJRtQZDZD",
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              messaging_product: "whatsapp",
-              to: from,
-              text: { body: reply }
-            })
-          }
-        );
+      // ==============================
+      // 🔥 AI CALL (FAST)
+      // ==============================
+      const aiRes = await fetch(
+        "https://hscobkuzqqmqchyaqcsf.supabase.co/functions/v1/ai-chat",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ message })
+        }
+      );
 
-      } catch (err) {
-        console.error("Error:", err);
-      }
-    }, 0);
+      const data = await aiRes.json();
+      const reply = data.reply || "Try again 😓";
 
-    return;
+      // ==============================
+      // 📤 SEND REPLY
+      // ==============================
+      await fetch(
+        "https://graph.facebook.com/v18.0/1033957863139428/messages",
+        {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer EAALnCZCkmhCsBRDaOoqS7bkVZBBFr23z7amSJLmSMUzl7qn488SqmZB5SCWO9NcZBp7jLL36QEK4ExruKQl7XNpszZAOmEElmHZBZCaZBSQ7SDZAlh4poLjYOHc0hZCcs3ZA14dqAjZCNB0wFLoYo6Y04Qbo9YpVG9YCSgGymWTGH91JPtAdpEBcx4LBt8Aqxnu55rJRtQZDZD",
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            messaging_product: "whatsapp",
+            to: from,
+            text: { body: reply }
+          })
+        }
+      );
+
+      // ✅ IMPORTANT: respond after everything
+      return res.sendStatus(200);
+
+    } catch (err) {
+      console.error("Error:", err);
+      return res.sendStatus(200);
+    }
   }
 
   return res.sendStatus(405);
