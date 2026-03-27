@@ -1,9 +1,10 @@
-let lastMessageId = null;
+// ✅ Store processed message IDs (temporary memory)
+const processedMessages = new Set();
 
 export default async function handler(req, res) {
 
   // ==============================
-  // ✅ 1. WEBHOOK VERIFICATION (GET)
+  // ✅ 1. WEBHOOK VERIFICATION
   // ==============================
   if (req.method === "GET") {
     const VERIFY_TOKEN = "upbeats123";
@@ -20,53 +21,50 @@ export default async function handler(req, res) {
   }
 
   // ==============================
-  // ✅ 2. HANDLE INCOMING MESSAGE (POST)
+  // ✅ 2. HANDLE INCOMING MESSAGE
   // ==============================
   if (req.method === "POST") {
     try {
       const body = req.body;
       const value = body.entry?.[0]?.changes?.[0]?.value;
 
-      // 🚫 Ignore empty or invalid data
-      if (!value) {
-        return res.sendStatus(200);
-      }
+      // 🚫 Ignore invalid
+      if (!value) return res.sendStatus(200);
 
-      // 🚫 IMPORTANT: Ignore status updates (delivered, read)
-      if (value.statuses) {
-        return res.sendStatus(200);
-      }
+      // 🚫 Ignore status updates (VERY IMPORTANT)
+      if (value.statuses) return res.sendStatus(200);
 
       const msg = value.messages?.[0];
+      if (!msg) return res.sendStatus(200);
 
-      // 🚫 No message
-      if (!msg) {
+      // 🚫 Ignore non-text
+      if (msg.type !== "text") return res.sendStatus(200);
+
+      // 🚫 Ignore bot's own messages (IMPORTANT 🔥)
+      const myNumber = value.metadata?.display_phone_number;
+      if (msg.from === myNumber) {
         return res.sendStatus(200);
       }
 
-      // 🚫 Ignore duplicate messages
-      if (msg.id === lastMessageId) {
+      // 🚫 Prevent duplicate processing
+      if (processedMessages.has(msg.id)) {
         return res.sendStatus(200);
       }
-      lastMessageId = msg.id;
+      processedMessages.add(msg.id);
 
-      // 🚫 Only allow text messages
-      if (msg.type !== "text") {
-        return res.sendStatus(200);
-      }
+      // Optional cleanup (avoid memory leak)
+      setTimeout(() => processedMessages.delete(msg.id), 60000);
 
       const message = msg.text?.body;
       const from = msg.from;
 
-      if (!message || !from) {
-        return res.sendStatus(200);
-      }
+      if (!message || !from) return res.sendStatus(200);
 
       console.log("User:", from);
       console.log("Message:", message);
 
       // ==============================
-      // 🔥 3. CALL YOUR AI API
+      // 🔥 CALL AI API
       // ==============================
       const aiResponse = await fetch(
         "https://hscobkuzqqmqchyaqcsf.supabase.co/functions/v1/ai-chat",
@@ -85,11 +83,10 @@ export default async function handler(req, res) {
       console.log("AI Reply:", reply);
 
       // ==============================
-      // 📤 4. SEND REPLY TO WHATSAPP
+      // 📤 SEND MESSAGE
       // ==============================
       const PHONE_NUMBER_ID = "1033957863139428";
 
-      // ✅ Your permanent access token already added
       const ACCESS_TOKEN = "EAALnCZCkmhCsBRDaOoqS7bkVZBBFr23z7amSJLmSMUzl7qn488SqmZB5SCWO9NcZBp7jLL36QEK4ExruKQl7XNpszZAOmEElmHZBZCaZBSQ7SDZAlh4poLjYOHc0hZCcs3ZA14dqAjZCNB0wFLoYo6Y04Qbo9YpVG9YCSgGymWTGH91JPtAdpEBcx4LBt8Aqxnu55rJRtQZDZD";
 
       await fetch(
