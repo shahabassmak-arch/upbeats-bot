@@ -31,25 +31,28 @@ export default async function handler(req, res) {
       // 🚫 Ignore status updates
       if (value.statuses) return res.sendStatus(200);
 
-      // ✅ FIX: Only process messages coming TO your number
-      const phoneNumberId = value.metadata?.phone_number_id;
-      if (phoneNumberId !== "1033957863139428") return res.sendStatus(200);
-
-      // ✅ FIX: Only process real user messages (has contacts field)
+      // 🚫 Ignore if no contacts (not a real user message)
       const contacts = value.contacts?.[0];
       if (!contacts) return res.sendStatus(200);
 
       const msg = value.messages?.[0];
-
-      // 🚫 No message
       if (!msg) return res.sendStatus(200);
 
-      // ✅ FIX: Skip if we already processed this message
+      // ✅ FIX: Ignore old messages (older than 30 seconds)
+      const msgTime = parseInt(msg.timestamp) * 1000;
+      const now = Date.now();
+      if (now - msgTime > 30000) return res.sendStatus(200);
+
+      // ✅ FIX: Skip duplicate messages
       const msgId = msg.id;
       if (seenMessages.has(msgId)) return res.sendStatus(200);
       seenMessages.add(msgId);
 
-      // 🚫 Only text
+      // ✅ FIX: Only allow messages TO your number
+      const phoneNumberId = value.metadata?.phone_number_id;
+      if (phoneNumberId !== "1033957863139428") return res.sendStatus(200);
+
+      // 🚫 Only handle text
       if (msg.type !== "text") return res.sendStatus(200);
 
       const message = msg.text?.body;
@@ -57,19 +60,20 @@ export default async function handler(req, res) {
 
       if (!message || !from) return res.sendStatus(200);
 
+      // 🚫 Ignore if the sender is YOUR OWN number (bot talking to itself)
+      if (from === "1033957863139428") return res.sendStatus(200);
+
       console.log("User:", from);
       console.log("Message:", message);
 
       // ==============================
-      // 🔥 AI CALL (FAST)
+      // 🔥 AI CALL
       // ==============================
       const aiRes = await fetch(
         "https://hscobkuzqqmqchyaqcsf.supabase.co/functions/v1/ai-chat",
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message })
         }
       );
