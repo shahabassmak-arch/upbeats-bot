@@ -1,7 +1,9 @@
+const seenMessages = new Set();
+
 export default async function handler(req, res) {
 
   // ==============================
-  // ✅ VERIFY WEBHOOK
+  // ✅ VERIFY
   // ==============================
   if (req.method === "GET") {
     const VERIFY_TOKEN = "upbeats123";
@@ -21,35 +23,33 @@ export default async function handler(req, res) {
   if (req.method === "POST") {
     try {
       const body = req.body;
-
       const value = body.entry?.[0]?.changes?.[0]?.value;
 
-      // Ignore invalid
+      // 🚫 Ignore invalid
       if (!value) return res.sendStatus(200);
 
-      // Ignore status updates
+      // 🚫 Ignore status updates
       if (value.statuses) return res.sendStatus(200);
+
+      // ✅ FIX: Only process messages coming TO your number
+      const phoneNumberId = value.metadata?.phone_number_id;
+      if (phoneNumberId !== "1033957863139428") return res.sendStatus(200);
+
+      // ✅ FIX: Only process real user messages (has contacts field)
+      const contacts = value.contacts?.[0];
+      if (!contacts) return res.sendStatus(200);
 
       const msg = value.messages?.[0];
 
-      // No message
+      // 🚫 No message
       if (!msg) return res.sendStatus(200);
 
-      // ==============================
-      // ✅ STOP DUPLICATES
-      // ==============================
+      // ✅ FIX: Skip if we already processed this message
       const msgId = msg.id;
+      if (seenMessages.has(msgId)) return res.sendStatus(200);
+      seenMessages.add(msgId);
 
-      global.processedMessages = global.processedMessages || new Set();
-
-      if (global.processedMessages.has(msgId)) {
-        return res.sendStatus(200);
-      }
-      global.processedMessages.add(msgId);
-
-      // ==============================
-      // ✅ ONLY TEXT
-      // ==============================
+      // 🚫 Only text
       if (msg.type !== "text") return res.sendStatus(200);
 
       const message = msg.text?.body;
@@ -57,18 +57,11 @@ export default async function handler(req, res) {
 
       if (!message || !from) return res.sendStatus(200);
 
-      // ==============================
-      // ⚠️ IMPORTANT: IGNORE SELF LOOP
-      // ==============================
-      if (from === "1033957863139428") {
-        return res.sendStatus(200);
-      }
-
       console.log("User:", from);
       console.log("Message:", message);
 
       // ==============================
-      // 🔥 AI CALL
+      // 🔥 AI CALL (FAST)
       // ==============================
       const aiRes = await fetch(
         "https://hscobkuzqqmqchyaqcsf.supabase.co/functions/v1/ai-chat",
